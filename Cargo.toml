@@ -1,0 +1,8 @@
+[package]
+name = "rustun"
+version = "0.1.0"
+authors = ["scriptjunkie"]
+edition = "2018"
+
+[dependencies]
+libc = "0"
