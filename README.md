@@ -16,4 +16,4 @@ Simple Linux tunnel ("VPN" but not encrypted/authenticated) in 100 lines of Rust
 # Advanced
 Want to route your traffic through the tunnel?
 - On your server run `sudo iptables -t nat -A POSTROUTING -j MASQUERADE ; echo "1" | sudo tee /proc/sys/net/ipv4/ip_forward` to enable forwarding and NAT'ing
-- On your client set up a static /32 route for your target IP (so the VPN packets don't try to get routed through the VPN) then set 10.8.3.1 as your default gateway
+- On your client set up a static /32 route for your target IP (so the VPN packets don't try to get routed through the VPN) then set 10.8.3.1 as your default gateway. Something like this might work, please substitute out $SERVERIP first though: `OLDGW=$(route -n | grep '^0\.0\.0\.0' | awk '{print $2}') ; route add -host $SERVERIP gw $OLDGW ; route add default gw 10.8.3.1`
