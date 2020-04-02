@@ -13,7 +13,6 @@ const IFF_RUNNING: c_short = 0x40;
 const IFF_UP: c_short = 0x1;
 const IFF_TUN: c_short = 0x0001;
 const IFF_NO_PI: c_short = 0x1000;
-
 #[repr(C, align(16))] //struct for TUNSETIFF and SIOCGIFFLAGS/SIOCSIFFLAGS ioctl's
 pub struct SetIff {
     ifname: [c_char; 16],
@@ -43,8 +42,7 @@ fn main() -> io::Result<()>{
     } else {
         Arc::new(Mutex::new(Some(arg.parse().expect("Invalid IP:port")))) //client parses IP:port
     };
-    let devnettun = CString::new("/dev/net/tun").unwrap();
-    let fd = unsafe{open(devnettun.as_ptr(), 2)};
+    let fd = unsafe{open(CString::new("/dev/net/tun").unwrap().as_ptr(), 2)};
     let mut params = SetIff {
         ifname: [b't' as i8,b'u' as i8, b'n' as i8, b'7' as i8,0,0,0,0,0,0,0,0,0,0,0,0],//"tun7",
         flags: IFF_TUN | IFF_NO_PI,
@@ -74,6 +72,7 @@ fn main() -> io::Result<()>{
         let mut buf = [0; 65536]; //support full jumbo frames
         while let Ok((rcvd, src_addr)) = rcv_sock.recv_from(&mut buf){
             let _ = addr_ref.lock().and_then(|mut a|Ok(a.replace(src_addr))); //save addr
+            (&mut buf[..rcvd]).iter_mut().map(|b| *b ^= 0xff).last(); //Decrypt!
             let origptr: *const u8 = &buf[0]; //we'll need transmute to convert *const u8 to void*
             let res = unsafe{write(fd, mem::transmute(origptr), rcvd)}; //send it along
             if res != rcvd as isize{
@@ -90,6 +89,7 @@ fn main() -> io::Result<()>{
             eprintln!("Error? read {}", read_res);
             break;
         }
+        (&mut buf[..read_res as usize]).iter_mut().map(|b| *b ^= 0xff).last(); //Encrypt!
         if let Ok(addr_guard) = addr.lock() {
             if let Some(addr_real) = *addr_guard { //server sends to last seen addr
                 socket.send_to(&buf[0..read_res as usize], addr_real)?;
